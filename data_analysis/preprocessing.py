@@ -64,8 +64,6 @@ def make_preprocessing(edf_fname, mont_fname, csv_fname):
     
     prep_raw = ica.apply(raw, exclude=bads_ica)
     
-    prep_raw.set_eeg_reference(ref_channels='average')
-    
     prep_raw.save('/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06-prep.fif', overwrite=True)
     
     return prep_raw

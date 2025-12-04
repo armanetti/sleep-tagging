@@ -11,7 +11,7 @@ def create_montage(avg_montage):
     ch_positions = csv[['X', 'Y', 'Z']].values
     channels = dict(zip(ch_names, ch_positions))
     montage = mne.channels.make_dig_montage(ch_pos=channels, 
-                                            coord_frame='head')
+                                            coord_frame='unknown')
     return montage
 
 if __name__ == '__main__':
