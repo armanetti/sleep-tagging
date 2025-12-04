@@ -65,13 +65,33 @@ python -m ipykernel install --user --name SleepTagging --display-name "SleepTagg
 You can confirm that dependencies were installed correctly:
 
 ```bash
-python -c "import numpy, pandas; print('Environment OK')"
+python -c "import mne; print('Environment OK')"
 ```
 
 Or launch Jupyter Notebook:
 
 ```bash
 jupyter notebook
+```
+
+---
+
+## For GPUs users
+
+To install CUDA drivers, follow the official PyTorch documentation:
+https://pytorch.org/get-started/locally/
+
+Before installing, check your current CUDA version with:
+```bash
+nvcc --version
+```
+Example output might look like:
+```
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2023 NVIDIA Corporation
+Built on Fri_Jan__6_16:45:21_PST_2023
+Cuda compilation tools, release 12.0, V12.0.140
+Build cuda_12.0.r12.0/compiler.32267302_0
 ```
 
 ---
