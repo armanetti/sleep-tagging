@@ -4,6 +4,7 @@ from mne.preprocessing import ICA
 import numpy as np
 import pandas as pd
 import pyprep
+import argparse
 
 def make_preprocessing(edf_fname, mont_fname, csv_fname):
     raw = mne.io.read_raw_edf(edf_fname, eog=['EOG1', 'EOG2'], 
@@ -67,11 +68,61 @@ def make_preprocessing(edf_fname, mont_fname, csv_fname):
     prep_raw.save('/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06-prep.fif', overwrite=True)
     
     return prep_raw
-    
-        
-if __name__ == '__main__':
-    edf_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06.edf'
-    montage_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/average.pos'
-    csv_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06.txt'
-    raw = make_preprocessing(edf_fname, montage_fname, csv_fname)
-    print(raw)
+
+def _parse_arguments():
+    """
+    Parses command line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Process EEG data using EDF, Montage, and CSV inputs."
+    )
+
+    # Argument for the EDF file
+    parser.add_argument(
+        '--edf', 
+        dest='edf_fname', 
+        required=True, 
+        type=str,
+        help='Path to the input .edf file'
+    )
+
+    # Argument for the Montage file
+    parser.add_argument(
+        '--montage', 
+        dest='montage_fname', 
+        required=True, 
+        type=str,
+        help='Path to the montage file'
+    )
+
+    # Argument for the CSV file
+    parser.add_argument(
+        '--csv', 
+        dest='csv_fname', 
+        required=True, 
+        type=str,
+        help='Path to the .csv file'
+    )
+
+    return parser.parse_args()
+
+def main():
+    # 1. Parse the arguments
+    args = _parse_arguments()
+
+    # 2. Pass the arguments into your processing function
+    # The variable names correspond to the 'dest' parameters set above
+    raw = make_preprocessing(
+        edf_fname=args.edf_fname, 
+        mont_fname=args.montage_fname, 
+        csv_fname=args.csv_fname
+    )
+
+if __name__ == "__main__":
+    main()        
+
+#     edf_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06.edf'
+#     montage_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/average.pos'
+#     csv_fname = '/home/jerry/Documenti/Research/BrainHack/2025/project/EPCTL06/EPCTL06.txt'
+#     raw = make_preprocessing(edf_fname, montage_fname, csv_fname)
+#     print(raw)
