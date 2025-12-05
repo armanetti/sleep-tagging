@@ -439,6 +439,45 @@ def reshuffling(X: np.ndarray) -> np.ndarray:
 
     return Y
 
+# NEW FUNCTION 
+def phase_randomization(X: np.ndarray) -> np.ndarray:
+    """Phase randomization in Fourier space."""
+    X = np.asarray(X)
+    N, T = X.shape
+    
+    Y = np.zeros_like(X)
+    
+    for i in range(N):
+        fft_x = np.fft.rfft(X[i])
+        random_phases = np.exp(2j * np.pi * np.random.rand(len(fft_x)))
+        random_phases[0] = 1  # Keep DC component real
+        if T % 2 == 0:
+            random_phases[-1] = 1  # Keep Nyquist real for even length
+        fft_randomized = fft_x * random_phases
+        Y[i] = np.fft.irfft(fft_randomized, n=T)
+    
+    return Y
+
+# NEW FUNCTION
+def block_permutation(X: np.ndarray, block_length: int = 2400) -> np.ndarray:
+    """Block permutation with fixed block length."""
+    X = np.asarray(X)
+    N, T = X.shape
+    
+    n_blocks = T // block_length
+    remainder = T % block_length
+    
+    Y = np.zeros_like(X)
+    
+    for i in range(N):
+        blocks = X[i, :n_blocks * block_length].reshape(n_blocks, block_length)
+        permuted_indices = np.random.permutation(n_blocks)
+        Y[i, :n_blocks * block_length] = blocks[permuted_indices].ravel()
+        if remainder > 0:
+            Y[i, n_blocks * block_length:] = X[i, n_blocks * block_length:]
+    
+    return Y
+
 
 def PCA(X: np.ndarray) -> np.ndarray:
     """
