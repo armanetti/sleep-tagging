@@ -1,3 +1,4 @@
 .vscode/
 data_analysis/__pycache__/
 Data_for_analysis/
+.DS_Store
