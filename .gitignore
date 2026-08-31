@@ -2,3 +2,10 @@
 data_analysis/__pycache__/
 Data_for_analysis/
 .DS_Store
+# built by web/build_standalone.py, not source
+web/dist/
+
+# superati da src/export_atlas.py, tenuti in locale
+src/export_bands.py
+src/export_stage_peaks.py
+src/export_portfolio_data.py

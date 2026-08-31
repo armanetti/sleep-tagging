@@ -1,0 +1,650 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sleep Phase Networks</title>
+<meta name="description" content="Where each sleep stage oscillates on the scalp, and how those areas couple, one rhythm at a time.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --paper:#EDEFF2;
+  --ink:#14171C;
+  --ink-2:#565D6B;
+  --ink-3:#656C7A;
+  --rule:#D3D8DF;
+
+  --ph-W:#9A3412;
+  --ph-N1:#0F766E;
+  --ph-N2:#1D4ED8;
+  --ph-N3:#172554;
+  --ph-R:#9F1239;
+
+  --accent:var(--ph-N2);
+}
+
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#111317;
+    --ink:#EAECF0;
+    --ink-2:#A3AAB6;
+    --ink-3:#868D9C;
+    --rule:#2A2F37;
+    --ph-W:#F0A45C;
+    --ph-N1:#4FD1C5;
+    --ph-N2:#7FB0F0;
+    --ph-N3:#3F5BD9;
+    --ph-R:#FF7D97;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111317;
+  --ink:#EAECF0;
+  --ink-2:#A3AAB6;
+  --ink-3:#868D9C;
+  --rule:#2A2F37;
+  --ph-W:#F0A45C;
+  --ph-N1:#4FD1C5;
+  --ph-N2:#7FB0F0;
+  --ph-N3:#3F5BD9;
+  --ph-R:#FF7D97;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;overflow:hidden;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none;border-bottom:1px solid var(--rule);
+  transition:border-color .18s}
+a:hover{border-color:var(--ink)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* the canvas is a replaced element: without explicit width and height it takes
+   the intrinsic size of its buffer instead of filling the box */
+#plate{position:fixed;top:0;left:0;width:100%;height:100%;display:block;cursor:grab}
+#plate.dragging{cursor:grabbing}
+#plate:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+#frame{
+  position:fixed;inset:0;pointer-events:none;
+  display:grid;
+  grid-template-columns:minmax(14rem,16rem) 1fr minmax(12rem,14rem);
+  grid-template-rows:auto 1fr auto;
+  padding:2.25rem 2.5rem;
+  gap:1.5rem;
+}
+#frame > *{pointer-events:auto}
+
+.masthead{grid-column:1 / span 2;grid-row:1;align-self:start}
+.masthead h1{
+  margin:0;font-size:1.75rem;font-weight:600;letter-spacing:-.024em;
+  line-height:1.12;text-wrap:balance;max-width:20ch;
+}
+.masthead p{margin:.625rem 0 0;color:var(--ink-2);font-size:.8125rem;max-width:52ch}
+
+.panel{align-self:center;display:flex;flex-direction:column;gap:1.75rem}
+.left{grid-column:1;grid-row:2;max-width:16rem}
+.right{grid-column:3;grid-row:2;max-width:14rem}
+.panel h2{margin:0 0 .5rem;font-size:.75rem;font-weight:500;color:var(--ink-3)}
+
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.rows button{
+  --c:var(--ink-3);
+  display:flex;align-items:center;gap:.625rem;width:100%;
+  padding:.4375rem 0;border:0;border-bottom:1px solid var(--rule);
+  background:none;color:var(--ink-2);font:inherit;text-align:left;cursor:pointer;
+  transition:color .18s;
+}
+.rows button.two{align-items:baseline;padding:.5rem 0}
+.rows .stack{display:flex;flex-direction:column;gap:.0625rem;min-width:0}
+.rows .where{font-size:.6875rem;color:var(--ink-3);font-weight:400}
+.rows li:last-child button{border-bottom:0}
+.rows button:hover{color:var(--ink)}
+.rows button:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.rows button[aria-pressed="true"]{color:var(--ink);font-weight:500}
+
+.depth{flex:0 0 auto;height:1px;background:var(--c);opacity:.35;
+  transition:opacity .18s,height .18s}
+.rows button[aria-pressed="true"] .depth{opacity:1;height:3px}
+
+.glyph{
+  flex:0 0 1rem;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.9375rem;color:var(--ink-3);transition:color .18s;
+}
+.rows button[aria-pressed="true"] .glyph{color:var(--accent)}
+.name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{
+  margin-left:auto;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.6875rem;color:var(--ink-3);font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+.controls{grid-column:3;grid-row:1;align-self:start;justify-self:end}
+.segmented{display:flex;border:1px solid var(--rule)}
+.segmented button{
+  padding:.3125rem .625rem;border:0;background:none;color:var(--ink-2);
+  font:inherit;font-size:.75rem;cursor:pointer;transition:color .18s,background .18s;
+}
+.segmented button + button{border-left:1px solid var(--rule)}
+.segmented button:hover{color:var(--ink)}
+.segmented button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.segmented button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.credits{
+  grid-column:1 / span 2;grid-row:3;align-self:end;margin:0;
+  font-size:.6875rem;line-height:1.6;color:var(--ink-3);max-width:62ch;
+}
+.affordance{
+  grid-column:3;grid-row:3;align-self:end;justify-self:end;margin:0;
+  font-size:.6875rem;color:var(--ink-3);text-align:right;
+}
+
+#tip{
+  position:fixed;pointer-events:none;z-index:3;opacity:0;
+  padding:.25rem .5rem;background:var(--ink);color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.6875rem;
+  white-space:nowrap;transition:opacity .12s;
+}
+#boot{
+  position:fixed;inset:0;z-index:5;display:grid;place-items:center;
+  background:var(--paper);color:var(--ink-3);font-size:.8125rem;transition:opacity .45s;
+}
+#boot.done{opacity:0;pointer-events:none}
+
+@media (max-width:1000px){
+  body{overflow:auto}
+  #plate{position:relative;height:52vh;min-height:18rem}
+  #frame{position:static;display:flex;flex-direction:column;gap:1.25rem;padding:1.25rem}
+  .panel{max-width:none}
+  .rows{max-width:26rem}
+  .affordance{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+
+<canvas id="plate" tabindex="0" aria-label="Rhythm topography and coupling across 83 scalp electrodes, rotatable"></canvas>
+
+<div id="frame">
+  <header class="masthead">
+    <h1>Tracking sleep phases through EEG networks</h1>
+    <p>Each sleep stage is shown at the frequencies where its own spectrum peaks
+       above the aperiodic background. Every node is an electrode, sized by the
+       power inside that peak relative to the neighbouring sidebands. Every edge
+       joins a pair of electrodes whose covariance at that rhythm is both strong
+       and in phase, above the 95th percentile. The head is seen from above with
+       the nose at the top: this is scalp topography, not a reconstruction of the
+       brain underneath.</p>
+  </header>
+
+  <div class="panel left">
+    <section>
+      <h2>Sleep stage</h2>
+      <ul class="rows" id="stages"></ul>
+    </section>
+  </div>
+
+  <div class="controls">
+    <div class="segmented" id="views" role="group" aria-label="Viewpoint">
+      <button data-view="top" aria-pressed="true">Top</button>
+      <button data-view="side" aria-pressed="false">Side</button>
+      <button data-view="oblique" aria-pressed="false">Oblique</button>
+    </div>
+  </div>
+
+  <div class="panel right">
+    <section>
+      <h2>Rhythm of this stage</h2>
+      <ul class="rows" id="peaks"></ul>
+    </section>
+  </div>
+
+  <p class="credits" id="credits"></p>
+  <p class="affordance">Drag to rotate<br>Scroll to zoom</p>
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+<div id="boot">Loading</div>
+
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.min.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* data */
+
+const STAGE = {
+  W : {name:'Wake', depth:0.00, token:'--ph-W'},
+  N1: {name:'N1',   depth:0.32, token:'--ph-N1'},
+  R : {name:'REM',  depth:0.18, token:'--ph-R'},
+  N2: {name:'N2',   depth:0.64, token:'--ph-N2'},
+  N3: {name:'N3',   depth:1.00, token:'--ph-N3'},
+};
+const ORDER = ['W','N1','R','N2','N3'];
+
+const decode = s => {
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+async function load(){
+  try{
+    const r = await fetch('./data_coh/atlas_plates.json', {cache:'no-cache'});
+    if(r.ok) return await r.json();
+  }catch(_){ /* file:// or standalone copy: fall back to the embedded blob */ }
+  const el = document.getElementById('plates-data');
+  return el ? JSON.parse(el.textContent) : null;
+}
+
+const S = {D:null, stage:'N2', peak:0, tween:1, lit:0};
+const stageData = () => S.D.stages[S.stage];
+const peakData = () => {
+  const ps = stageData().peaks;
+  return ps[Math.min(S.peak, ps.length - 1)];
+};
+const strongest = code => {
+  const ps = S.D.stages[code].peaks;
+  let best = 0;
+  ps.forEach((p, k) => { if(p.power > ps[best].power) best = k; });
+  return best;
+};
+
+/* each plate carries its own edge list: the strongest 5% of pairs at that
+   rhythm */
+function edgesOf(p){
+  if(!p._e) p._e = {i:decode(p.edges.i), j:decode(p.edges.j), w:decode(p.edges.w)};
+  return p._e;
+}
+
+/* colours, read from the CSS tokens so the plate follows the page theme */
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const PAPER = new THREE.Color(), INK = new THREE.Color(), RULE = new THREE.Color();
+const ACCENT = new THREE.Color(), PREV = new THREE.Color();
+
+function readTokens(){
+  PAPER.set(css('--paper')); INK.set(css('--ink')); RULE.set(css('--rule'));
+  ACCENT.set(css(STAGE[S.stage].token));
+}
+
+/* scene */
+
+const canvas = document.getElementById('plate');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+const root = new THREE.Group();
+scene.add(root);
+
+const orbit = {az:Math.PI, el:1.30, dist:3.35};
+let drag = null, dirty = true;
+const mark = () => { dirty = true; };
+
+function placeCamera(){
+  orbit.el = Math.max(-1.45, Math.min(1.45, orbit.el));
+  orbit.dist = Math.max(2.1, Math.min(7, orbit.dist));
+  camera.position.set(
+    orbit.dist * Math.cos(orbit.el) * Math.sin(orbit.az),
+    orbit.dist * Math.sin(orbit.el),
+    orbit.dist * Math.cos(orbit.el) * Math.cos(orbit.az));
+  camera.lookAt(0, 0, 0);
+  scene.fog = new THREE.Fog(PAPER, orbit.dist - 1.05, orbit.dist + 3.0);
+  mark();
+}
+
+canvas.addEventListener('pointerdown', e => {
+  drag = {x:e.clientX, y:e.clientY};
+  canvas.classList.add('dragging'); canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointerup', e => {
+  drag = null; canvas.classList.remove('dragging');
+  if(canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if(drag){
+    orbit.az -= (e.clientX - drag.x) * 0.007;
+    orbit.el += (e.clientY - drag.y) * 0.007;
+    drag = {x:e.clientX, y:e.clientY};
+    placeCamera();
+  }else probe(e);
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  orbit.dist *= Math.exp(e.deltaY * 0.0011);
+  placeCamera();
+}, {passive:false});
+
+const VIEWS = {top:[Math.PI, 1.30], side:[-Math.PI/2, 0.06], oblique:[-0.66, 0.42]};
+
+/* dots and arcs */
+
+let dots, arcs, sites = [], names = [], nEdge = 0;
+
+const DOT_VERT = `
+  attribute float aSize;
+  uniform float uScale;
+  uniform float fogNear;
+  uniform float fogFar;
+  varying float vFog;
+  void main(){
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vFog = smoothstep(fogNear, fogFar, -mv.z);
+    gl_PointSize = aSize * uScale / -mv.z;
+    /* arcs converge on the exact centre of a node: without nudging the point
+       toward the camera their near halves slice pale wedges out of the disc */
+    mv.z += 0.03;
+    gl_Position = projectionMatrix * mv;
+  }`;
+
+const DOT_FRAG = `
+  uniform vec3 uInk;
+  uniform vec3 fogColor;
+  varying float vFog;
+  void main(){
+    vec2 p = gl_PointCoord - 0.5;
+    float r = length(p) * 2.0;
+    if(r > 1.0) discard;
+    vec3 c = mix(fogColor, uInk, smoothstep(0.88, 0.80, r));
+    c = mix(fogColor, c, smoothstep(1.0, 0.90, r));
+    gl_FragColor = vec4(mix(c, fogColor, vFog), 1.0);
+  }`;
+
+function buildPlate(){
+  while(root.children.length) root.remove(root.children[0]);
+
+  /* ch_pos is in head coordinates: x forward, y left, z up.
+     In the scene: x right, y up, z toward the viewer. */
+  const raw = S.D.electrodes.map(e => new THREE.Vector3(-e.y, e.z, e.x));
+  names = S.D.electrodes.map(e => e.name);
+  const c = raw.reduce((a,v) => a.add(v), new THREE.Vector3()).divideScalar(raw.length);
+  const R = Math.max(...raw.map(v => v.distanceTo(c)));
+  sites = raw.map(v => v.clone().sub(c).divideScalar(R));
+
+  const ext = ['x','y','z'].map(k => Math.max(...sites.map(p => Math.abs(p[k]))));
+  outlineOf(ext).forEach(o => root.add(o));
+
+  /* Arcs are instanced cylinders, not LineSegments: WebGL pins line width to a
+     single device pixel, which at DPR 2 is a ghost. In scene units the width
+     can carry the strength of the coupling. */
+  nEdge = 0;
+  Object.values(S.D.stages).forEach(st => st.peaks.forEach(p => {
+    nEdge = Math.max(nEdge, edgesOf(p).i.length);
+  }));
+  arcs = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(1, 1, 1, 5, 1, true),
+    new THREE.MeshBasicMaterial({fog:true}), nEdge);
+  arcs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  arcs.frustumCulled = false;
+  root.add(arcs);
+
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.BufferAttribute(
+    new Float32Array(sites.flatMap(p => [p.x, p.y, p.z])), 3));
+  dg.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(sites.length), 1));
+  dots = new THREE.Points(dg, new THREE.ShaderMaterial({
+    uniforms:THREE.UniformsUtils.merge([
+      THREE.UniformsLib.fog,
+      {uInk:{value:new THREE.Color()}, uScale:{value:600}}]),
+    vertexShader:DOT_VERT, fragmentShader:DOT_FRAG, fog:true,
+  }));
+  dots.frustumCulled = false; dots.renderOrder = 1;
+  root.add(dots);
+}
+
+function outlineOf(ext){
+  const mat = new THREE.LineBasicMaterial({
+    color:RULE.clone().lerp(INK, 0.45), fog:true});
+  const line = pts => new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts), mat);
+
+  const wide = sites.slice()
+    .sort((a,b) => Math.hypot(b.x,b.z) - Math.hypot(a.x,a.z))
+    .slice(0, Math.round(sites.length * 0.18));
+  const y = wide.reduce((s,p) => s + p.y, 0) / wide.length;
+  const rx = ext[0] * 1.04, rz = ext[2] * 1.04;
+
+  const ring = [];
+  for(let i = 0; i <= 160; i++){
+    const a = i / 160 * Math.PI * 2;
+    ring.push(new THREE.Vector3(Math.sin(a)*rx, y, Math.cos(a)*rz));
+  }
+  const nx = rx * 0.14;
+  const nose = [new THREE.Vector3(-nx, y, rz*0.982),
+                new THREE.Vector3(  0, y, rz*1.145),
+                new THREE.Vector3( nx, y, rz*0.982)];
+  const ear = s => {
+    const p = [];
+    for(let i = 0; i <= 28; i++){
+      const a = -1.15 + i / 28 * 2.30;
+      p.push(new THREE.Vector3(s*(rx*0.995 + Math.cos(a)*rx*0.085),
+                               y, Math.sin(a)*rz*0.20));
+    }
+    return p;
+  };
+  return [line(ring), line(nose), line(ear(1)), line(ear(-1))];
+}
+
+/* composing one plate */
+
+const _c = new THREE.Color(), _a = new THREE.Color();
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion();
+const _up = new THREE.Vector3(0,1,0), _d = new THREE.Vector3(), _mid = new THREE.Vector3();
+const _s = new THREE.Vector3();
+
+function compose(){
+  if(!arcs) return;
+  const p = peakData();
+  const {i, j, w} = edgesOf(p), n = decode(p.nodes);
+
+  for(let k = 0; k < nEdge; k++){
+    if(k >= i.length){ arcs.setMatrixAt(k, _m.makeScale(0,0,0)); continue; }
+    const t = w[k] / 255;
+    const a = sites[i[k]], b = sites[j[k]];
+    _mid.addVectors(a, b).multiplyScalar(0.5);
+    _d.subVectors(b, a);
+    const len = _d.length();
+    _q.setFromUnitVectors(_up, _d.normalize());
+    const rad = 0.0014 + 0.0042 * t;
+    _s.set(rad, len, rad);
+    arcs.setMatrixAt(k, _m.compose(_mid, _q, _s));
+  }
+  arcs.instanceMatrix.needsUpdate = true;
+  S.lit = i.length;
+
+  const size = dots.geometry.attributes.aSize.array;
+  for(let d = 0; d < sites.length; d++) size[d] = 0.010 + 0.042 * (n[d] / 255);
+  dots.geometry.attributes.aSize.needsUpdate = true;
+
+  tint();
+}
+
+function tint(){
+  const {w} = edgesOf(peakData());
+  _a.copy(PREV).lerp(ACCENT, S.tween);
+  for(let k = 0; k < nEdge; k++){
+    const t = k < w.length ? w[k] / 255 : 0;
+    _c.copy(PAPER).lerp(_a, 0.34 + 0.66 * t);
+    if(t > 0.50) _c.lerp(INK, (t - 0.50) * 0.70);
+    arcs.setColorAt(k, _c);
+  }
+  if(arcs.instanceColor) arcs.instanceColor.needsUpdate = true;
+  dots.material.uniforms.uInk.value.copy(INK);
+  mark();
+}
+
+/* hover */
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const tip = document.getElementById('tip');
+ray.params.Points.threshold = 0.045;
+
+function probe(ev){
+  if(!dots) return;
+  const b = canvas.getBoundingClientRect();
+  ndc.x =  ((ev.clientX - b.left) / b.width)  * 2 - 1;
+  ndc.y = -((ev.clientY - b.top)  / b.height) * 2 + 1;
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(dots, false)[0];
+  if(hit){
+    const p = peakData(), {i, j} = edgesOf(p), n = decode(p.nodes);
+    let deg = 0;
+    for(let k = 0; k < i.length; k++)
+      if(i[k] === hit.index || j[k] === hit.index) deg++;
+    tip.textContent =
+      `${names[hit.index]}  rhythm ${(n[hit.index] / 255).toFixed(2)}  ${deg} links`;
+    tip.style.left = (ev.clientX + 12) + 'px';
+    tip.style.top  = (ev.clientY - 8) + 'px';
+    tip.style.opacity = 1;
+  }else tip.style.opacity = 0;
+}
+
+/* panels */
+
+function buildStages(){
+  const ul = document.getElementById('stages');
+  ul.innerHTML = '';
+  ORDER.forEach(code => {
+    const st = S.D.stages[code]; if(!st) return;
+    const m = STAGE[code];
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.dataset.stage = code;
+    b.style.setProperty('--c', `var(${m.token})`);
+    b.setAttribute('aria-pressed', String(code === S.stage));
+    b.innerHTML = `<span class="depth" style="width:${10 + m.depth*30}px"></span>` +
+                  `<span class="name">${m.name}</span>` +
+                  `<span class="num">${Math.round(st.minutes)} min</span>`;
+    b.onclick = () => pickStage(code);
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+/* not a fixed list of bands: the frequencies at which THIS stage actually
+   oscillates, as found by FOOOF on its own spectrum */
+function buildPeaks(){
+  const ul = document.getElementById('peaks');
+  ul.innerHTML = '';
+  stageData().peaks.forEach((p, k) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.dataset.peak = String(k);
+    b.setAttribute('aria-pressed', String(k === S.peak));
+    b.className = 'two';
+    const label = p.band.rhythm.charAt(0).toUpperCase() + p.band.rhythm.slice(1);
+    b.innerHTML = `<span class="glyph">${p.band.glyph}</span>` +
+                  `<span class="stack"><span class="name">${label}</span>` +
+                  `<span class="where">${p.region}</span></span>` +
+                  `<span class="num">${p.freq.toFixed(2)} Hz</span>`;
+    b.onclick = () => pickPeak(k);
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+let tweenFrom = 0;
+function pickStage(code){
+  if(code !== S.stage){ PREV.copy(ACCENT); S.tween = 0; tweenFrom = performance.now(); }
+  S.stage = code;
+  S.peak = strongest(code);
+  document.documentElement.style.setProperty('--accent', `var(${STAGE[code].token})`);
+  readTokens();
+  document.querySelectorAll('#stages button').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.stage === code)));
+  buildPeaks();
+  refresh();
+}
+
+function pickPeak(k){
+  S.peak = k;
+  document.querySelectorAll('#peaks button').forEach(b =>
+    b.setAttribute('aria-pressed', String(+b.dataset.peak === k)));
+  refresh();
+}
+
+function refresh(){
+  compose();
+}
+
+document.getElementById('views').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#views button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x === b)));
+  [orbit.az, orbit.el] = VIEWS[b.dataset.view];
+  placeCamera();
+};
+
+function resize(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if(!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  if(dots) dots.material.uniforms.uScale.value =
+    h * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360));
+  mark();
+}
+addEventListener('resize', resize);
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  readTokens(); PREV.copy(ACCENT);
+  renderer.setClearColor(PAPER, 1);
+  /* the outline follows the rule colour; arcs carry per-instance colours and
+     their material.color must stay white or it tints every one of them */
+  root.traverse(o => {
+    if(o.isLine && !o.material.vertexColors) o.material.color.copy(RULE).lerp(INK, 0.45);
+  });
+  tint(); placeCamera();
+});
+
+function loop(now){
+  if(S.tween < 1){
+    S.tween = reduced.matches ? 1 : Math.min(1, (now - tweenFrom) / 320);
+    tint();
+  }
+  if(dirty){ renderer.render(scene, camera); dirty = false; }
+  requestAnimationFrame(loop);
+}
+
+(async function start(){
+  const D = await load();
+  if(!D){
+    document.getElementById('boot').textContent =
+      'Data not reachable. Serve the folder with python -m http.server';
+    return;
+  }
+  S.D = D;
+  readTokens();
+  renderer.setClearColor(PAPER, 1);
+  buildPlate(); buildStages();
+  PREV.copy(ACCENT);
+  pickStage('N2');
+
+  const m = D.meta;
+  document.getElementById('credits').innerHTML =
+    `Visualisations built on the EEG recording of one participant: ` +
+    `${m.n_channels} electrodes, ${m.hours} hours in total.<br>` +
+    `These analyses were carried out during BrainHack 2025, held at the IMT ` +
+    `School for Advanced Studies Lucca, by Arianna Armanetti (team leader), ` +
+    `Ruggero Basanisi, Alessandro Iannone, Monica Paoletti, Alexander Ferraro, ` +
+    `Emanuele Agrimi, Maxime Zewe, Miguel Ibanez Berganza and Giuseppe Antonio ` +
+    `Motisi.<br>` +
+    `The code developed for the project is available at ` +
+    `<a href="https://github.com/armanetti/sleep-tagging" target="_blank" rel="noopener">github.com/armanetti/sleep-tagging</a>. ` +
+    `Project inspired by the work of ` +
+    `<a href="https://arxiv.org/abs/2403.15092" target="_blank" rel="noopener">Calvo et al. 2024</a>.`;
+
+  resize(); placeCamera();
+  requestAnimationFrame(loop);
+  document.getElementById('boot').classList.add('done');
+  window.atlas = {THREE, scene, camera, root, orbit, state:S, sites};
+})();
+</script>

@@ -575,7 +575,10 @@ def correlation_freq(
     C /= float(n_chunks)
 
     if corr_type.lower() == "correlation":
-        diag = np.real(np.diag(C))
+        # np.diag() restituisce una vista read-only e np.real() ne restituisce
+        # un'altra: senza .copy() l'assegnazione sotto solleva
+        # "assignment destination is read-only" su numpy >= 2.
+        diag = np.real(np.diag(C)).copy()
         # Avoid division by zero
         diag[diag == 0] = 1.0
         norm = np.sqrt(diag.reshape(N, 1) * diag.reshape(1, N))
