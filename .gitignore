@@ -9,3 +9,12 @@ web/dist/
 src/export_bands.py
 src/export_stage_peaks.py
 src/export_portfolio_data.py
+
+# plot prodotti dai notebook
+src/*.png
+
+# esplorativo, superato da fdc_paper_figures.ipynb
+src/notebook_for_data.ipynb
+
+# bytecode
+__pycache__/
